@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { roundDecimals } from 'src/shared/utils/format-numbers';
+import { StateService } from '../state/state.service';
 import { LoanSimulationDto } from './dto/loan-simulation.dto';
 
 @Injectable()
 export class LoanService {
-  async loanSimulate({ value, partialValue }: LoanSimulationDto) {
+  constructor(private readonly stateService: StateService) {}
+  async loanSimulate({ stateId, value, partialValue }: LoanSimulationDto) {
     this.validateLoanSimulate(value, partialValue);
-    const fee = 0.1;
+    const { fee } = await this.stateService.findOneById(stateId);
     const month = Math.ceil(value / partialValue) + 1;
 
     let valueSeed = value;

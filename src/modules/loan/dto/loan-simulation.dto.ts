@@ -1,5 +1,4 @@
 import {
-  IsDate,
   IsDateString,
   IsDefined,
   IsNumber,
