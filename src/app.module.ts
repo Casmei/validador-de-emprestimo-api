@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoanModule } from './modules/loan/loan.module';
-import { StateModule } from './modules/state/state.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -12,7 +11,6 @@ import { StateModule } from './modules/state/state.module';
       autoLoadEntities: true,
     }),
     LoanModule,
-    StateModule,
   ],
   controllers: [],
   providers: [LoanModule],

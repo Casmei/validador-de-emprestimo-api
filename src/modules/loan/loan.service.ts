@@ -1,48 +1,53 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { roundDecimals } from 'src/shared/utils/format-numbers';
-import { StateService } from '../state/state.service';
+import { dataStateMock, State } from './data-state.mock';
 import { LoanSimulationDto } from './dto/loan-simulation.dto';
 
 @Injectable()
 export class LoanService {
-  constructor(private readonly stateService: StateService) {}
+  /**
+   * Decidi fazer essa função em português para facilitar o entendimento
+   */
   async loanSimulate({ stateId, value, partialValue }: LoanSimulationDto) {
     this.validateLoanSimulate(value, partialValue);
-    const { fee } = await this.stateService.findOneById(stateId);
-    const month = Math.ceil(value / partialValue) + 1;
+    const { fee } = this.validateStateId(stateId);
 
-    let valueSeed = value;
-    let totalInterest = 0;
-    const installments = [];
+    const mes = Math.ceil(value / partialValue) + 1;
 
-    for (let i = 0; i < month; i++) {
-      const interest = valueSeed * fee;
-      totalInterest += interest;
-      const balance = valueSeed + interest;
-      const installment = roundDecimals(
-        balance > partialValue ? partialValue : balance,
+    let saldoDevedor = value;
+    let jurosTotais = 0;
+    const prestacoes = [];
+
+    for (let i = 0; i < mes; i++) {
+      // const valorDoJuros = i !== 0 ? saldoDevedor * fee : 0;
+      const valorDoJuros = saldoDevedor * fee;
+
+      jurosTotais += valorDoJuros;
+      const saldo = saldoDevedor + valorDoJuros;
+      const prestacao = roundDecimals(
+        saldo > partialValue ? partialValue : saldo,
         2,
       );
-      valueSeed = balance - installment;
-
-      installments.push({
-        debitBalance: roundDecimals(valueSeed, 2),
-        interestPerMonth: roundDecimals(interest, 2),
-        debitBalanceAdjusted: roundDecimals(balance, 2),
-        installmentValue: installment,
+      saldoDevedor = saldo - prestacao;
+      prestacoes.push({
+        mes: i + 1,
+        saldo: roundDecimals(saldo, 2),
+        prestacao,
+        saldoDevedor: roundDecimals(saldoDevedor, 2),
+        valorDoJuros: roundDecimals(valorDoJuros, 2),
       });
     }
 
-    const totalLoan = value + totalInterest;
+    const totalLoan = value + jurosTotais;
 
     return {
-      value,
-      partialValue,
-      fee,
-      month,
-      totalInterest: roundDecimals(totalInterest, 2),
-      totalLoan: roundDecimals(totalLoan, 2),
-      installments,
+      valorTotal: value,
+      parcela: partialValue,
+      juros: fee,
+      mes,
+      jurosTotais: roundDecimals(jurosTotais, 2),
+      ValorFinalEmprestimo: roundDecimals(totalLoan, 2),
+      prestacoes,
     };
   }
 
@@ -53,16 +58,20 @@ export class LoanService {
       );
     }
 
-    // const isMinValue = value >= 5000;
-
-    // if (!isMinValue) {
-    //   throw new BadRequestException('Minimum loan amount not reached');
-    // }
-
     const isMinValuePortion = partialValue >= value * 0.01;
 
     if (!isMinValuePortion) {
       throw new BadRequestException('Minimum installment value not reached');
     }
+  }
+
+  private validateStateId(stateId: number): State {
+    const state = dataStateMock.find((state) => {
+      return state.id == stateId;
+    });
+    if (!state) {
+      throw new BadRequestException('Invalid state id');
+    }
+    return state;
   }
 }
